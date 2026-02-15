@@ -7,8 +7,10 @@ import {
 } from "../agents/huggingface-models.js";
 import {
   buildQianfanProvider,
+  buildHunyuanProvider,
   buildXiaomiProvider,
   QIANFAN_DEFAULT_MODEL_ID,
+  HUNYUAN_DEFAULT_MODEL_ID,
   XIAOMI_DEFAULT_MODEL_ID,
 } from "../agents/models-config.providers.js";
 import {
@@ -59,6 +61,8 @@ import {
   buildXaiModelDefinition,
   QIANFAN_BASE_URL,
   QIANFAN_DEFAULT_MODEL_REF,
+  HUNYUAN_BASE_URL,
+  HUNYUAN_DEFAULT_MODEL_REF,
   KIMI_CODING_MODEL_REF,
   MOONSHOT_BASE_URL,
   MOONSHOT_CN_BASE_URL,
@@ -760,6 +764,59 @@ export function applyQianfanConfig(cfg: OpenClawConfig): OpenClawConfig {
               }
             : undefined),
           primary: QIANFAN_DEFAULT_MODEL_REF,
+        },
+      },
+    },
+  };
+}
+
+export function applyHunyuanProviderConfig(cfg: OpenClawConfig): OpenClawConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[HUNYUAN_DEFAULT_MODEL_REF] = {
+    ...models[HUNYUAN_DEFAULT_MODEL_REF],
+    alias: models[HUNYUAN_DEFAULT_MODEL_REF]?.alias ?? "Hunyuan",
+  };
+  const defaultProvider = buildHunyuanProvider();
+  const existingProvider = cfg.models?.providers?.hunyuan as
+    | {
+        baseUrl?: unknown;
+        api?: unknown;
+      }
+    | undefined;
+  const existingBaseUrl =
+    typeof existingProvider?.baseUrl === "string" ? existingProvider.baseUrl.trim() : "";
+  const resolvedBaseUrl = existingBaseUrl || HUNYUAN_BASE_URL;
+  const resolvedApi =
+    typeof existingProvider?.api === "string"
+      ? (existingProvider.api as ModelApi)
+      : "openai-completions";
+
+  return applyProviderConfigWithDefaultModels(cfg, {
+    agentModels: models,
+    providerId: "hunyuan",
+    api: resolvedApi,
+    baseUrl: resolvedBaseUrl,
+    defaultModels: defaultProvider.models ?? [],
+    defaultModelId: HUNYUAN_DEFAULT_MODEL_ID,
+  });
+}
+
+export function applyHunyuanConfig(cfg: OpenClawConfig): OpenClawConfig {
+  const next = applyHunyuanProviderConfig(cfg);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: HUNYUAN_DEFAULT_MODEL_REF,
         },
       },
     },

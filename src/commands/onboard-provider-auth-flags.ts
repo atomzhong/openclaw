@@ -21,6 +21,7 @@ type OnboardProviderAuthOptionKey = keyof Pick<
   | "xaiApiKey"
   | "litellmApiKey"
   | "qianfanApiKey"
+  | "hunyuanApiKey"
 >;
 
 export type OnboardProviderAuthFlag = {
@@ -165,5 +166,12 @@ export const ONBOARD_PROVIDER_AUTH_FLAGS: ReadonlyArray<OnboardProviderAuthFlag>
     cliFlag: "--qianfan-api-key",
     cliOption: "--qianfan-api-key <key>",
     description: "QIANFAN API key",
+  },
+  {
+    optionKey: "hunyuanApiKey",
+    authChoice: "hunyuan-api-key",
+    cliFlag: "--hunyuan-api-key",
+    cliOption: "--hunyuan-api-key <key>",
+    description: "Tencent Hunyuan API key",
   },
 ];

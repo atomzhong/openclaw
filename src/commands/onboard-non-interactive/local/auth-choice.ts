@@ -13,6 +13,7 @@ import {
   applyAuthProfileConfig,
   applyCloudflareAiGatewayConfig,
   applyQianfanConfig,
+  applyHunyuanConfig,
   applyKimiCodeConfig,
   applyMinimaxApiConfig,
   applyMinimaxApiConfigCn,
@@ -33,6 +34,7 @@ import {
   setAnthropicApiKey,
   setCloudflareAiGatewayConfig,
   setQianfanApiKey,
+  setHunyuanApiKey,
   setGeminiApiKey,
   setKimiCodingApiKey,
   setLitellmApiKey,
@@ -324,6 +326,29 @@ export async function applyNonInteractiveAuthChoice(params: {
       mode: "api_key",
     });
     return applyQianfanConfig(nextConfig);
+  }
+
+  if (authChoice === "hunyuan-api-key") {
+    const resolved = await resolveNonInteractiveApiKey({
+      provider: "hunyuan",
+      cfg: baseConfig,
+      flagValue: opts.hunyuanApiKey,
+      flagName: "--hunyuan-api-key",
+      envVar: "HUNYUAN_API_KEY",
+      runtime,
+    });
+    if (!resolved) {
+      return null;
+    }
+    if (resolved.source !== "profile") {
+      setHunyuanApiKey(resolved.key);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "hunyuan:default",
+      provider: "hunyuan",
+      mode: "api_key",
+    });
+    return applyHunyuanConfig(nextConfig);
   }
 
   if (authChoice === "openai-api-key") {

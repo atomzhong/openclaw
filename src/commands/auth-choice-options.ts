@@ -95,6 +95,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     choices: ["qianfan-api-key"],
   },
   {
+    value: "hunyuan",
+    label: "Tencent Hunyuan",
+    hint: "API key",
+    choices: ["hunyuan-api-key"],
+  },
+  {
     value: "copilot",
     label: "Copilot",
     hint: "GitHub + local proxy",
@@ -183,6 +189,11 @@ const BASE_AUTH_CHOICE_OPTIONS: ReadonlyArray<AuthChoiceOption> = [
   {
     value: "qianfan-api-key",
     label: "Qianfan API key",
+  },
+  {
+    value: "hunyuan-api-key",
+    label: "Tencent Hunyuan API key",
+    hint: "OpenAI-compatible (hunyuan.cloud.tencent.com)",
   },
   { value: "openrouter-api-key", label: "OpenRouter API key" },
   {

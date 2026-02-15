@@ -123,6 +123,17 @@ const NVIDIA_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
+export const HUNYUAN_BASE_URL = "https://api.hunyuan.cloud.tencent.com/v1";
+export const HUNYUAN_DEFAULT_MODEL_ID = "hunyuan-turbos-latest";
+const HUNYUAN_DEFAULT_CONTEXT_WINDOW = 32000;
+const HUNYUAN_DEFAULT_MAX_TOKENS = 16000;
+const HUNYUAN_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 interface OllamaModel {
   name: string;
   modified_at: string;
@@ -656,6 +667,51 @@ export function buildNvidiaProvider(): ProviderConfig {
   };
 }
 
+export function buildHunyuanProvider(): ProviderConfig {
+  return {
+    baseUrl: HUNYUAN_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: HUNYUAN_DEFAULT_MODEL_ID,
+        name: "Hunyuan TurboS",
+        reasoning: false,
+        input: ["text"],
+        cost: HUNYUAN_DEFAULT_COST,
+        contextWindow: HUNYUAN_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: HUNYUAN_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "hunyuan-t1-latest",
+        name: "Hunyuan T1",
+        reasoning: true,
+        input: ["text"],
+        cost: HUNYUAN_DEFAULT_COST,
+        contextWindow: 32000,
+        maxTokens: 64000,
+      },
+      {
+        id: "hunyuan-a13b",
+        name: "Hunyuan A13B",
+        reasoning: true,
+        input: ["text"],
+        cost: HUNYUAN_DEFAULT_COST,
+        contextWindow: 224000,
+        maxTokens: 32000,
+      },
+      {
+        id: "hunyuan-lite",
+        name: "Hunyuan Lite",
+        reasoning: false,
+        input: ["text"],
+        cost: HUNYUAN_DEFAULT_COST,
+        contextWindow: 250000,
+        maxTokens: 6000,
+      },
+    ],
+  };
+}
+
 export async function resolveImplicitProviders(params: {
   agentDir: string;
   explicitProviders?: Record<string, ProviderConfig> | null;
@@ -805,6 +861,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "nvidia", store: authStore });
   if (nvidiaKey) {
     providers.nvidia = { ...buildNvidiaProvider(), apiKey: nvidiaKey };
+  }
+
+  const hunyuanKey =
+    resolveEnvApiKeyVarName("hunyuan") ??
+    resolveApiKeyFromProfiles({ provider: "hunyuan", store: authStore });
+  if (hunyuanKey) {
+    providers.hunyuan = { ...buildHunyuanProvider(), apiKey: hunyuanKey };
   }
 
   return providers;

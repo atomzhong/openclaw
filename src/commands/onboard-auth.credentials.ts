@@ -263,6 +263,18 @@ export function setQianfanApiKey(key: string, agentDir?: string) {
   });
 }
 
+export function setHunyuanApiKey(key: string, agentDir?: string) {
+  upsertAuthProfile({
+    profileId: "hunyuan:default",
+    credential: {
+      type: "api_key",
+      provider: "hunyuan",
+      key,
+    },
+    agentDir: resolveAuthAgentDir(agentDir),
+  });
+}
+
 export function setXaiApiKey(key: string, agentDir?: string) {
   upsertAuthProfile({
     profileId: "xai:default",

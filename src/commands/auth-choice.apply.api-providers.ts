@@ -19,6 +19,8 @@ import {
   applyCloudflareAiGatewayProviderConfig,
   applyQianfanConfig,
   applyQianfanProviderConfig,
+  applyHunyuanConfig,
+  applyHunyuanProviderConfig,
   applyKimiCodeConfig,
   applyKimiCodeProviderConfig,
   applyLitellmConfig,
@@ -44,6 +46,7 @@ import {
   CLOUDFLARE_AI_GATEWAY_DEFAULT_MODEL_REF,
   LITELLM_DEFAULT_MODEL_REF,
   QIANFAN_DEFAULT_MODEL_REF,
+  HUNYUAN_DEFAULT_MODEL_REF,
   KIMI_CODING_MODEL_REF,
   MOONSHOT_DEFAULT_MODEL_REF,
   SYNTHETIC_DEFAULT_MODEL_REF,
@@ -53,6 +56,7 @@ import {
   XIAOMI_DEFAULT_MODEL_REF,
   setCloudflareAiGatewayConfig,
   setQianfanApiKey,
+  setHunyuanApiKey,
   setGeminiApiKey,
   setLitellmApiKey,
   setKimiCodingApiKey,
@@ -124,6 +128,8 @@ export async function applyAuthChoiceApiProviders(
       authChoice = "opencode-zen";
     } else if (params.opts.tokenProvider === "qianfan") {
       authChoice = "qianfan-api-key";
+    } else if (params.opts.tokenProvider === "hunyuan") {
+      authChoice = "hunyuan-api-key";
     }
   }
 
@@ -951,6 +957,62 @@ export async function applyAuthChoiceApiProviders(
         applyDefaultConfig: applyQianfanConfig,
         applyProviderConfig: applyQianfanProviderConfig,
         noteDefault: QIANFAN_DEFAULT_MODEL_REF,
+        noteAgentModel,
+        prompter: params.prompter,
+      });
+      nextConfig = applied.config;
+      agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
+    }
+    return { config: nextConfig, agentModelOverride };
+  }
+
+  if (authChoice === "hunyuan-api-key") {
+    let hasCredential = false;
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "hunyuan") {
+      setHunyuanApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+    }
+
+    if (!hasCredential) {
+      await params.prompter.note(
+        [
+          "Get your API key at: https://console.cloud.tencent.com/hunyuan/api-key",
+          "Docs: https://cloud.tencent.com/document/product/1729/111007",
+        ].join("\n"),
+        "Tencent Hunyuan",
+      );
+    }
+    const envKey = resolveEnvApiKey("hunyuan");
+    if (envKey) {
+      const useExisting = await params.prompter.confirm({
+        message: `Use existing HUNYUAN_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        setHunyuanApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+    if (!hasCredential) {
+      const key = await params.prompter.text({
+        message: "Enter Tencent Hunyuan API key",
+        validate: validateApiKeyInput,
+      });
+      setHunyuanApiKey(normalizeApiKeyInput(String(key ?? "")), params.agentDir);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "hunyuan:default",
+      provider: "hunyuan",
+      mode: "api_key",
+    });
+    {
+      const applied = await applyDefaultModelChoice({
+        config: nextConfig,
+        setDefaultModel: params.setDefaultModel,
+        defaultModel: HUNYUAN_DEFAULT_MODEL_REF,
+        applyDefaultConfig: applyHunyuanConfig,
+        applyProviderConfig: applyHunyuanProviderConfig,
+        noteDefault: HUNYUAN_DEFAULT_MODEL_REF,
         noteAgentModel,
         prompter: params.prompter,
       });
