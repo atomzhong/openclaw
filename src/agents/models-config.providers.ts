@@ -124,9 +124,9 @@ const NVIDIA_DEFAULT_COST = {
 };
 
 export const HUNYUAN_BASE_URL = "https://api.hunyuan.cloud.tencent.com/v1";
-export const HUNYUAN_DEFAULT_MODEL_ID = "hunyuan-turbos-latest";
-const HUNYUAN_DEFAULT_CONTEXT_WINDOW = 32000;
-const HUNYUAN_DEFAULT_MAX_TOKENS = 16000;
+export const HUNYUAN_DEFAULT_MODEL_ID = "hunyuan-2.0-thinking-20251109";
+const HUNYUAN_DEFAULT_CONTEXT_WINDOW = 128000;
+const HUNYUAN_DEFAULT_MAX_TOKENS = 64000;
 const HUNYUAN_DEFAULT_COST = {
   input: 0,
   output: 0,
@@ -674,39 +674,12 @@ export function buildHunyuanProvider(): ProviderConfig {
     models: [
       {
         id: HUNYUAN_DEFAULT_MODEL_ID,
-        name: "Hunyuan TurboS",
+        name: "Tencent HY 2.0 Think",
         reasoning: false,
         input: ["text"],
         cost: HUNYUAN_DEFAULT_COST,
         contextWindow: HUNYUAN_DEFAULT_CONTEXT_WINDOW,
         maxTokens: HUNYUAN_DEFAULT_MAX_TOKENS,
-      },
-      {
-        id: "hunyuan-t1-latest",
-        name: "Hunyuan T1",
-        reasoning: true,
-        input: ["text"],
-        cost: HUNYUAN_DEFAULT_COST,
-        contextWindow: 32000,
-        maxTokens: 64000,
-      },
-      {
-        id: "hunyuan-a13b",
-        name: "Hunyuan A13B",
-        reasoning: true,
-        input: ["text"],
-        cost: HUNYUAN_DEFAULT_COST,
-        contextWindow: 224000,
-        maxTokens: 32000,
-      },
-      {
-        id: "hunyuan-lite",
-        name: "Hunyuan Lite",
-        reasoning: false,
-        input: ["text"],
-        cost: HUNYUAN_DEFAULT_COST,
-        contextWindow: 250000,
-        maxTokens: 6000,
       },
     ],
   };
