@@ -33,8 +33,17 @@ export async function handleWxworkBotMessage(params: {
   const { cfg, msgCtx, runtime, chatHistories, accountId } = params;
   const log = runtime?.log ?? console.log;
   const error = runtime?.error ?? console.error;
+  log(`wxwork-bot[${accountId}]: [DEBUG] entering handleWxworkBotMessage`);
+
   const core = getWxworkBotRuntime();
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] runtime obtained, channel keys: ${Object.keys(core.channel ?? {}).join(", ")}`,
+  );
+
   const account = resolveWxworkBotAccount({ cfg, accountId });
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] account resolved, configured=${account.configured}, enabled=${account.enabled}`,
+  );
 
   // Skip event messages (just log them)
   if (msgCtx.msgType === "event") {
@@ -129,6 +138,7 @@ export async function handleWxworkBotMessage(params: {
   log(
     `wxwork-bot[${accountId}]: ${msgCtx.msgType} from ${senderName} (${senderId}) in ${msgCtx.chatType}:${chatId}`,
   );
+  log(`wxwork-bot[${accountId}]: [DEBUG] received message content: "${messageText}"`);
 
   // Collect image URLs for media handling
   const imageUrls: string[] = [];
@@ -155,6 +165,11 @@ export async function handleWxworkBotMessage(params: {
   const wxworkFrom = isGroup ? `wxwork-bot:group:${chatId}:${senderId}` : `wxwork-bot:${senderId}`;
   const wxworkTo = `wxwork-bot:${chatId}`;
 
+  log(`wxwork-bot[${accountId}]: [DEBUG] resolving agent route...`);
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] core.channel.routing: ${typeof core.channel.routing}, keys: ${Object.keys(core.channel.routing ?? {}).join(", ")}`,
+  );
+
   const route = core.channel.routing.resolveAgentRoute({
     cfg,
     channel: "wxwork-bot",
@@ -164,9 +179,18 @@ export async function handleWxworkBotMessage(params: {
       id: isGroup ? chatId : senderId,
     },
   });
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] route resolved: agentId=${route.agentId}, sessionKey=${route.sessionKey}`,
+  );
 
   // Build envelope for the agent
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] core.channel.reply keys: ${Object.keys(core.channel.reply ?? {}).join(", ")}`,
+  );
+
   const envelopeOptions = core.channel.reply.resolveEnvelopeFormatOptions(cfg);
+  log(`wxwork-bot[${accountId}]: [DEBUG] envelope options resolved`);
+
   const body = core.channel.reply.formatAgentEnvelope({
     channel: "wxwork-bot",
     from: wxworkFrom,
@@ -174,6 +198,7 @@ export async function handleWxworkBotMessage(params: {
     envelope: envelopeOptions,
     body: messageText,
   });
+  log(`wxwork-bot[${accountId}]: [DEBUG] agent envelope formatted`);
 
   let combinedBody = body;
   const historyKey = isGroup ? chatId : undefined;
@@ -194,6 +219,7 @@ export async function handleWxworkBotMessage(params: {
         }),
     });
   }
+  log(`wxwork-bot[${accountId}]: [DEBUG] history context built`);
 
   const inboundHistory =
     isGroup && historyKey && historyLimit > 0 && chatHistories
@@ -205,13 +231,19 @@ export async function handleWxworkBotMessage(params: {
       : undefined;
 
   // Determine command authorization
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] core.channel.commands: ${typeof core.channel.commands}, keys: ${Object.keys(core.channel.commands ?? {}).join(", ")}`,
+  );
+
   const commandAuthorized = core.channel.commands.shouldComputeCommandAuthorized({
     cfg,
     channel: "wxwork-bot",
     accountId,
     senderId,
   });
+  log(`wxwork-bot[${accountId}]: [DEBUG] commandAuthorized=${commandAuthorized}`);
 
+  log(`wxwork-bot[${accountId}]: [DEBUG] calling finalizeInboundContext...`);
   const ctxPayload = core.channel.reply.finalizeInboundContext({
     Body: combinedBody,
     BodyForAgent: messageText,
@@ -237,8 +269,19 @@ export async function handleWxworkBotMessage(params: {
     OriginatingTo: wxworkTo,
     ...(imageUrls.length > 0 ? { MediaUrls: imageUrls, MediaUrl: imageUrls[0] } : {}),
   });
+  log(`wxwork-bot[${accountId}]: [DEBUG] inbound context finalized`);
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] ctxPayload.Body preview: "${String(ctxPayload.Body).slice(0, 300)}"`,
+  );
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] ctxPayload.BodyForAgent: "${String(ctxPayload.BodyForAgent).slice(0, 300)}"`,
+  );
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] ctxPayload.SessionKey: "${ctxPayload.SessionKey}", Provider: "${ctxPayload.Provider}", ChatType: "${ctxPayload.ChatType}"`,
+  );
 
   // Create reply dispatcher
+  log(`wxwork-bot[${accountId}]: [DEBUG] creating reply dispatcher...`);
   const { dispatcher, replyOptions, markDispatchIdle } = createWxworkBotReplyDispatcher({
     cfg,
     agentId: route.agentId,
@@ -247,9 +290,10 @@ export async function handleWxworkBotMessage(params: {
     webhookUrl: msgCtx.webhookUrl,
     accountId,
   });
+  log(`wxwork-bot[${accountId}]: [DEBUG] reply dispatcher created`);
 
   try {
-    log(`wxwork-bot[${accountId}]: dispatching to agent (session=${route.sessionKey})`);
+    log(`wxwork-bot[${accountId}]: [DEBUG] calling dispatchReplyFromConfig...`);
     let result: { queuedFinal: boolean; counts: { final: number } };
     try {
       result = await core.channel.reply.dispatchReplyFromConfig({
@@ -279,6 +323,8 @@ export async function handleWxworkBotMessage(params: {
       `wxwork-bot[${accountId}]: dispatch complete (queuedFinal=${result.queuedFinal}, replies=${result.counts.final})`,
     );
   } catch (err) {
-    error(`wxwork-bot[${accountId}]: failed to handle message from ${senderName}: ${String(err)}`);
+    error(
+      `wxwork-bot[${accountId}]: failed to handle message from ${senderName}: ${err instanceof Error ? (err.stack ?? String(err)) : String(err)}`,
+    );
   }
 }

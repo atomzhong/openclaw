@@ -385,7 +385,9 @@ async function monitorSingleAccount(params: {
           chatHistories,
           accountId,
         }).catch((err) => {
-          error(`wxwork-bot[${accountId}]: error handling message: ${String(err)}`);
+          error(
+            `wxwork-bot[${accountId}]: error handling message: ${err instanceof Error ? (err.stack ?? String(err)) : String(err)}`,
+          );
         });
       } catch (err) {
         error(`wxwork-bot[${accountId}]: callback processing error: ${String(err)}`);
