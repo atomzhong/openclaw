@@ -250,19 +250,22 @@ export async function handleWxworkBotMessage(params: {
 
   try {
     log(`wxwork-bot[${accountId}]: dispatching to agent (session=${route.sessionKey})`);
-    const { queuedFinal, counts } = await core.channel.reply.withReplyDispatcher({
-      dispatcher,
-      onSettled: () => {
+    let result: { queuedFinal: boolean; counts: { final: number } };
+    try {
+      result = await core.channel.reply.dispatchReplyFromConfig({
+        ctx: ctxPayload,
+        cfg,
+        dispatcher,
+        replyOptions,
+      });
+    } finally {
+      dispatcher.markComplete();
+      try {
+        await dispatcher.waitForIdle();
+      } finally {
         markDispatchIdle();
-      },
-      run: () =>
-        core.channel.reply.dispatchReplyFromConfig({
-          ctx: ctxPayload,
-          cfg,
-          dispatcher,
-          replyOptions,
-        }),
-    });
+      }
+    }
 
     if (isGroup && historyKey) {
       clearHistoryEntriesIfEnabled({
@@ -273,7 +276,7 @@ export async function handleWxworkBotMessage(params: {
     }
 
     log(
-      `wxwork-bot[${accountId}]: dispatch complete (queuedFinal=${queuedFinal}, replies=${counts.final})`,
+      `wxwork-bot[${accountId}]: dispatch complete (queuedFinal=${result.queuedFinal}, replies=${result.counts.final})`,
     );
   } catch (err) {
     error(`wxwork-bot[${accountId}]: failed to handle message from ${senderName}: ${String(err)}`);
