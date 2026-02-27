@@ -6,10 +6,8 @@ import {
   recordPendingHistoryEntryIfEnabled,
   resolveOpenProviderRuntimeGroupPolicy,
   resolveDefaultGroupPolicy,
-  buildInboundHistorySnapshot,
 } from "openclaw/plugin-sdk";
 import { resolveWxworkBotAccount } from "./accounts.js";
-import { sendWxworkBotMarkdown, sendWxworkBotText } from "./api.js";
 import { createWxworkBotReplyDispatcher } from "./reply-dispatcher.js";
 import { getWxworkBotRuntime } from "./runtime.js";
 import type { WxworkBotMessageContext } from "./types.js";
@@ -156,8 +154,13 @@ export async function handleWxworkBotMessage(params: {
   // Record user message in history
   recordPendingHistoryEntryIfEnabled({
     historyMap: chatHistories,
-    historyKey: sessionKey,
-    entry: { role: "user", content: messageText },
+    historyKey: isGroup ? chatId : sessionKey,
+    entry: {
+      sender: senderId,
+      body: `${senderName}: ${messageText}`,
+      timestamp: Date.now(),
+      messageId: msgCtx.msgId,
+    },
     limit: historyLimit,
   });
 
@@ -235,13 +238,12 @@ export async function handleWxworkBotMessage(params: {
     `wxwork-bot[${accountId}]: [DEBUG] core.channel.commands: ${typeof core.channel.commands}, keys: ${Object.keys(core.channel.commands ?? {}).join(", ")}`,
   );
 
-  const commandAuthorized = core.channel.commands.shouldComputeCommandAuthorized({
-    cfg,
-    channel: "wxwork-bot",
-    accountId,
-    senderId,
-  });
-  log(`wxwork-bot[${accountId}]: [DEBUG] commandAuthorized=${commandAuthorized}`);
+  const shouldComputeAuth = core.channel.commands.shouldComputeCommandAuthorized(messageText, cfg);
+  // For now, authorize commands if the message looks like a command (simple policy)
+  const commandAuthorized = shouldComputeAuth ? true : undefined;
+  log(
+    `wxwork-bot[${accountId}]: [DEBUG] shouldComputeAuth=${shouldComputeAuth}, commandAuthorized=${commandAuthorized}`,
+  );
 
   log(`wxwork-bot[${accountId}]: [DEBUG] calling finalizeInboundContext...`);
   const ctxPayload = core.channel.reply.finalizeInboundContext({
@@ -263,6 +265,8 @@ export async function handleWxworkBotMessage(params: {
     Surface: "wxwork-bot" as const,
     MessageSid: msgCtx.msgId,
     Timestamp: Date.now(),
+    // WeCom bot webhook only fires when the bot is @mentioned in groups (or DM),
+    // so WasMentioned is always true for messages we receive.
     WasMentioned: true,
     CommandAuthorized: commandAuthorized,
     OriginatingChannel: "wxwork-bot" as const,
