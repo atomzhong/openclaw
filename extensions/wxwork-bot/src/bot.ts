@@ -155,10 +155,10 @@ export async function handleWxworkBotMessage(params: {
 
   // Record user message in history
   recordPendingHistoryEntryIfEnabled({
-    chatHistories,
-    sessionKey,
+    historyMap: chatHistories,
+    historyKey: sessionKey,
     entry: { role: "user", content: messageText },
-    historyLimit,
+    limit: historyLimit,
   });
 
   // Resolve agent route
