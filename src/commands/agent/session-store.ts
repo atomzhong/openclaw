@@ -5,7 +5,6 @@ import { isCliProvider } from "../../agents/model-selection.js";
 import { deriveSessionTotalTokens, hasNonzeroUsage } from "../../agents/usage.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import {
-  mergeSessionEntry,
   setSessionRuntimeModel,
   type SessionEntry,
   updateSessionStore,
@@ -95,10 +94,8 @@ export async function updateSessionStoreAfterAgentRun(params: {
   if (compactionsThisRun > 0) {
     next.compactionCount = (entry.compactionCount ?? 0) + compactionsThisRun;
   }
-  const persisted = await updateSessionStore(storePath, (store) => {
-    const merged = mergeSessionEntry(store[sessionKey], next);
-    store[sessionKey] = merged;
-    return merged;
+  sessionStore[sessionKey] = next;
+  await updateSessionStore(storePath, (store) => {
+    store[sessionKey] = next;
   });
-  sessionStore[sessionKey] = persisted;
 }

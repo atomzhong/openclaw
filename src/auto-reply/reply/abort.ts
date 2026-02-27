@@ -20,15 +20,8 @@ import { parseAgentSessionKey } from "../../routing/session-key.js";
 import { resolveCommandAuthorization } from "../command-auth.js";
 import { normalizeCommandBody, type CommandNormalizeOptions } from "../commands-registry.js";
 import type { FinalizedMsgContext, MsgContext } from "../templating.js";
-import {
-  applyAbortCutoffToSessionEntry,
-  resolveAbortCutoffFromContext,
-  shouldPersistAbortCutoff,
-} from "./abort-cutoff.js";
 import { stripMentions, stripStructuralPrefixes } from "./mentions.js";
 import { clearSessionQueues } from "./queue.js";
-
-export { resolveAbortCutoffFromContext, shouldSkipMessageByAbortCutoff } from "./abort-cutoff.js";
 
 const ABORT_TRIGGERS = new Set([
   "stop",
@@ -309,15 +302,8 @@ export async function tryFastAbortFromMessage(params: {
         `abort: cleared followups=${cleared.followupCleared} lane=${cleared.laneCleared} keys=${cleared.keys.join(",")}`,
       );
     }
-    const abortCutoff = shouldPersistAbortCutoff({
-      commandSessionKey: ctx.SessionKey,
-      targetSessionKey: key ?? targetKey,
-    })
-      ? resolveAbortCutoffFromContext(ctx)
-      : undefined;
     if (entry && key) {
       entry.abortedLastRun = true;
-      applyAbortCutoffToSessionEntry(entry, abortCutoff);
       entry.updatedAt = Date.now();
       store[key] = entry;
       await updateSessionStore(storePath, (nextStore) => {
@@ -326,7 +312,6 @@ export async function tryFastAbortFromMessage(params: {
           return;
         }
         nextEntry.abortedLastRun = true;
-        applyAbortCutoffToSessionEntry(nextEntry, abortCutoff);
         nextEntry.updatedAt = Date.now();
         nextStore[key] = nextEntry;
       });

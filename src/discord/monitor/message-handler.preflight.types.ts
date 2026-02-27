@@ -1,12 +1,11 @@
 import type { ChannelType, Client, User } from "@buape/carbon";
 import type { HistoryEntry } from "../../auto-reply/reply/history.js";
 import type { ReplyToMode } from "../../config/config.js";
-import type { SessionBindingRecord } from "../../infra/outbound/session-binding-service.js";
 import type { resolveAgentRoute } from "../../routing/resolve-route.js";
 import type { DiscordChannelConfigResolved, DiscordGuildEntryResolved } from "./allow-list.js";
 import type { DiscordChannelInfo } from "./message-utils.js";
-import type { DiscordThreadBindingLookup } from "./reply-delivery.js";
 import type { DiscordSenderIdentity } from "./sender-identity.js";
+import type { ThreadBindingManager, ThreadBindingRecord } from "./thread-bindings.js";
 
 export type { DiscordSenderIdentity } from "./sender-identity.js";
 import type { DiscordThreadChannel } from "./threading.js";
@@ -53,7 +52,7 @@ export type DiscordMessagePreflightContext = {
   wasMentioned: boolean;
 
   route: ReturnType<typeof resolveAgentRoute>;
-  threadBinding?: SessionBindingRecord;
+  threadBinding?: ThreadBindingRecord;
   boundSessionKey?: string;
   boundAgentId?: string;
 
@@ -84,7 +83,7 @@ export type DiscordMessagePreflightContext = {
   canDetectMention: boolean;
 
   historyEntry?: HistoryEntry;
-  threadBindings: DiscordThreadBindingLookup;
+  threadBindings: ThreadBindingManager;
   discordRestFetch?: typeof fetch;
 };
 
@@ -107,7 +106,7 @@ export type DiscordMessagePreflightParams = {
   guildEntries?: Record<string, DiscordGuildEntryResolved>;
   ackReactionScope: DiscordMessagePreflightContext["ackReactionScope"];
   groupPolicy: DiscordMessagePreflightContext["groupPolicy"];
-  threadBindings: DiscordThreadBindingLookup;
+  threadBindings: ThreadBindingManager;
   discordRestFetch?: typeof fetch;
   data: DiscordMessageEvent;
   client: Client;

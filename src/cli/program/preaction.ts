@@ -25,11 +25,9 @@ const PLUGIN_REQUIRED_COMMANDS = new Set([
   "message",
   "channels",
   "directory",
-  "agents",
   "configure",
   "onboard",
 ]);
-const CONFIG_GUARD_BYPASS_COMMANDS = new Set(["doctor", "completion", "secrets"]);
 
 function getRootCommand(command: Command): Command {
   let current = command;
@@ -76,7 +74,7 @@ export function registerPreActionHooks(program: Command, programVersion: string)
     if (!verbose) {
       process.env.NODE_NO_WARNINGS ??= "1";
     }
-    if (CONFIG_GUARD_BYPASS_COMMANDS.has(commandPath[0])) {
+    if (commandPath[0] === "doctor" || commandPath[0] === "completion") {
       return;
     }
     const { ensureConfigReady } = await import("./config-guard.js");

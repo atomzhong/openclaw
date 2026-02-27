@@ -252,9 +252,7 @@ export async function resolveReplyDirectives(params: {
       }
     }
   }
-  // Use command.isAuthorizedSender (resolved authorization) instead of raw commandAuthorized
-  // to ensure inline directives work when commands.allowFrom grants access (e.g., LINE).
-  let directives = command.isAuthorizedSender
+  let directives = commandAuthorized
     ? parsedDirectives
     : {
         ...parsedDirectives,

@@ -53,12 +53,8 @@ const dispatchInboundMessage = vi.fn(async (_params?: DispatchInboundParams) => 
   counts: { final: 0, tool: 0, block: 0 },
 }));
 const recordInboundSession = vi.fn(async () => {});
-const configSessionsMocks = vi.hoisted(() => ({
-  readSessionUpdatedAt: vi.fn(() => undefined),
-  resolveStorePath: vi.fn(() => "/tmp/openclaw-discord-process-test-sessions.json"),
-}));
-const readSessionUpdatedAt = configSessionsMocks.readSessionUpdatedAt;
-const resolveStorePath = configSessionsMocks.resolveStorePath;
+const readSessionUpdatedAt = vi.fn(() => undefined);
+const resolveStorePath = vi.fn(() => "/tmp/openclaw-discord-process-test-sessions.json");
 
 vi.mock("../send.js", () => ({
   reactMessageDiscord: sendMocks.reactMessageDiscord,
@@ -109,8 +105,8 @@ vi.mock("../../channels/session.js", () => ({
 }));
 
 vi.mock("../../config/sessions.js", () => ({
-  readSessionUpdatedAt: configSessionsMocks.readSessionUpdatedAt,
-  resolveStorePath: configSessionsMocks.resolveStorePath,
+  readSessionUpdatedAt,
+  resolveStorePath,
 }));
 
 const { processDiscordMessage } = await import("./message-handler.process.js");

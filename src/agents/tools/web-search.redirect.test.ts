@@ -33,7 +33,6 @@ describe("web_search redirect resolution hardening", () => {
         timeoutMs: 5000,
         init: { method: "HEAD" },
         policy: { dangerouslyAllowPrivateNetwork: true },
-        proxy: "env",
       }),
     );
     expect(release).toHaveBeenCalledTimes(1);

@@ -4,7 +4,6 @@ import {
   resolveGatewaySystemdServiceName,
 } from "../daemon/constants.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
-import { cleanStaleGatewayProcessesSync, findGatewayPidsOnPortSync } from "./restart-stale-pids.js";
 
 export type RestartAttempt = {
   ok: boolean;
@@ -20,8 +19,6 @@ const DEFAULT_DEFERRAL_MAX_WAIT_MS = 30_000;
 const RESTART_COOLDOWN_MS = 30_000;
 
 const restartLog = createSubsystemLogger("restart");
-
-export { findGatewayPidsOnPortSync };
 
 let sigusr1AuthorizedCount = 0;
 let sigusr1AuthorizedUntil = 0;
@@ -290,9 +287,6 @@ export function triggerOpenClawRestart(): RestartAttempt {
   if (process.env.VITEST || process.env.NODE_ENV === "test") {
     return { ok: true, method: "supervisor", detail: "test mode" };
   }
-
-  cleanStaleGatewayProcessesSync();
-
   const tried: string[] = [];
   if (process.platform !== "darwin") {
     if (process.platform === "linux") {

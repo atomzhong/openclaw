@@ -315,22 +315,11 @@ function validateConfigObjectWithPluginsBase(
   }
 
   const { registry, knownIds, normalizedPlugins } = ensureRegistry();
-  const pushMissingPluginIssue = (
-    path: string,
-    pluginId: string,
-    opts?: { warnOnly?: boolean },
-  ) => {
+  const pushMissingPluginIssue = (path: string, pluginId: string) => {
     if (LEGACY_REMOVED_PLUGIN_IDS.has(pluginId)) {
       warnings.push({
         path,
         message: `plugin removed: ${pluginId} (stale config entry ignored; remove it from plugins config)`,
-      });
-      return;
-    }
-    if (opts?.warnOnly) {
-      warnings.push({
-        path,
-        message: `plugin not found: ${pluginId} (stale config entry ignored; remove it from plugins config)`,
       });
       return;
     }
@@ -346,8 +335,7 @@ function validateConfigObjectWithPluginsBase(
   if (entries && isRecord(entries)) {
     for (const pluginId of Object.keys(entries)) {
       if (!knownIds.has(pluginId)) {
-        // Keep gateway startup resilient when plugins are removed/renamed across upgrades.
-        pushMissingPluginIssue(`plugins.entries.${pluginId}`, pluginId, { warnOnly: true });
+        pushMissingPluginIssue(`plugins.entries.${pluginId}`, pluginId);
       }
     }
   }

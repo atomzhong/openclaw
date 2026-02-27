@@ -19,7 +19,6 @@ import {
   type PortUsageStatus,
 } from "../../infra/ports.js";
 import { pickPrimaryTailnetIPv4 } from "../../infra/tailnet.js";
-import { loadGatewayTlsRuntime } from "../../infra/tls/gateway.js";
 import { probeGatewayStatus } from "./probe.js";
 import { normalizeListenerAddress, parsePortFromArgs, pickProbeHostForBind } from "./shared.js";
 import type { GatewayRpcOpts } from "./types.js";
@@ -183,8 +182,7 @@ export async function gatherDaemonStatus(
   const probeHost = pickProbeHostForBind(bindMode, tailnetIPv4, customBindHost);
   const probeUrlOverride =
     typeof opts.rpc.url === "string" && opts.rpc.url.trim().length > 0 ? opts.rpc.url.trim() : null;
-  const scheme = daemonCfg.gateway?.tls?.enabled === true ? "wss" : "ws";
-  const probeUrl = probeUrlOverride ?? `${scheme}://${probeHost}:${daemonPort}`;
+  const probeUrl = probeUrlOverride ?? `ws://${probeHost}:${daemonPort}`;
   const probeNote =
     !probeUrlOverride && bindMode === "lan"
       ? `bind=lan listens on 0.0.0.0 (all interfaces); probing via ${probeHost}.`
@@ -222,12 +220,6 @@ export async function gatherDaemonStatus(
   const timeoutMsRaw = Number.parseInt(String(opts.rpc.timeout ?? "10000"), 10);
   const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 10_000;
 
-  const tlsEnabled = daemonCfg.gateway?.tls?.enabled === true;
-  const shouldUseLocalTlsRuntime = opts.probe && !probeUrlOverride && tlsEnabled;
-  const tlsRuntime = shouldUseLocalTlsRuntime
-    ? await loadGatewayTlsRuntime(daemonCfg.gateway?.tls)
-    : undefined;
-
   const rpc = opts.probe
     ? await probeGatewayStatus({
         url: probeUrl,
@@ -239,10 +231,6 @@ export async function gatherDaemonStatus(
           opts.rpc.password ||
           mergedDaemonEnv.OPENCLAW_GATEWAY_PASSWORD ||
           daemonCfg.gateway?.auth?.password,
-        tlsFingerprint:
-          shouldUseLocalTlsRuntime && tlsRuntime?.enabled
-            ? tlsRuntime.fingerprintSha256
-            : undefined,
         timeoutMs,
         json: opts.rpc.json,
         configPath: daemonConfigSummary.path,

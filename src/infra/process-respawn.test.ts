@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { captureFullEnv } from "../test-utils/env.js";
-import { SUPERVISOR_HINT_ENV_VARS } from "./supervisor-markers.js";
 
 const spawnMock = vi.hoisted(() => vi.fn());
 
@@ -22,9 +21,11 @@ afterEach(() => {
 });
 
 function clearSupervisorHints() {
-  for (const key of SUPERVISOR_HINT_ENV_VARS) {
-    delete process.env[key];
-  }
+  delete process.env.LAUNCH_JOB_LABEL;
+  delete process.env.LAUNCH_JOB_NAME;
+  delete process.env.INVOCATION_ID;
+  delete process.env.SYSTEMD_EXEC_PID;
+  delete process.env.JOURNAL_STREAM;
 }
 
 describe("restartGatewayProcessWithFreshPid", () => {
@@ -60,30 +61,6 @@ describe("restartGatewayProcessWithFreshPid", () => {
         stdio: "inherit",
       }),
     );
-  });
-
-  it("returns supervised when OPENCLAW_LAUNCHD_LABEL is set (stock launchd plist)", () => {
-    clearSupervisorHints();
-    process.env.OPENCLAW_LAUNCHD_LABEL = "ai.openclaw.gateway";
-    const result = restartGatewayProcessWithFreshPid();
-    expect(result.mode).toBe("supervised");
-    expect(spawnMock).not.toHaveBeenCalled();
-  });
-
-  it("returns supervised when OPENCLAW_SYSTEMD_UNIT is set", () => {
-    clearSupervisorHints();
-    process.env.OPENCLAW_SYSTEMD_UNIT = "openclaw-gateway.service";
-    const result = restartGatewayProcessWithFreshPid();
-    expect(result.mode).toBe("supervised");
-    expect(spawnMock).not.toHaveBeenCalled();
-  });
-
-  it("returns supervised when OPENCLAW_SERVICE_MARKER is set", () => {
-    clearSupervisorHints();
-    process.env.OPENCLAW_SERVICE_MARKER = "gateway";
-    const result = restartGatewayProcessWithFreshPid();
-    expect(result.mode).toBe("supervised");
-    expect(spawnMock).not.toHaveBeenCalled();
   });
 
   it("returns failed when spawn throws", () => {

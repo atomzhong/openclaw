@@ -35,14 +35,15 @@ export type ResolvedSystemRunCommand =
 export function formatExecCommand(argv: string[]): string {
   return argv
     .map((arg) => {
-      if (arg.length === 0) {
+      const trimmed = arg.trim();
+      if (!trimmed) {
         return '""';
       }
-      const needsQuotes = /\s|"/.test(arg);
+      const needsQuotes = /\s|"/.test(trimmed);
       if (!needsQuotes) {
-        return arg;
+        return trimmed;
       }
-      return `"${arg.replace(/"/g, '\\"')}"`;
+      return `"${trimmed.replace(/"/g, '\\"')}"`;
     })
     .join(" ");
 }

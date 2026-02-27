@@ -8,19 +8,7 @@ import { convertMarkdownTables } from "../../markdown/tables.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { chunkDiscordTextWithMode } from "../chunk.js";
 import { sendMessageDiscord, sendVoiceMessageDiscord, sendWebhookMessageDiscord } from "../send.js";
-
-export type DiscordThreadBindingLookupRecord = {
-  accountId: string;
-  threadId: string;
-  agentId: string;
-  label?: string;
-  webhookId?: string;
-  webhookToken?: string;
-};
-
-export type DiscordThreadBindingLookup = {
-  listBySessionKey: (targetSessionKey: string) => DiscordThreadBindingLookupRecord[];
-};
+import type { ThreadBindingManager, ThreadBindingRecord } from "./thread-bindings.js";
 
 function resolveTargetChannelId(target: string): string | undefined {
   if (!target.startsWith("channel:")) {
@@ -31,10 +19,10 @@ function resolveTargetChannelId(target: string): string | undefined {
 }
 
 function resolveBoundThreadBinding(params: {
-  threadBindings?: DiscordThreadBindingLookup;
+  threadBindings?: ThreadBindingManager;
   sessionKey?: string;
   target: string;
-}): DiscordThreadBindingLookupRecord | undefined {
+}): ThreadBindingRecord | undefined {
   const sessionKey = params.sessionKey?.trim();
   if (!params.threadBindings || !sessionKey) {
     return undefined;
@@ -50,7 +38,7 @@ function resolveBoundThreadBinding(params: {
   return bindings.find((entry) => entry.threadId === targetChannelId);
 }
 
-function resolveBindingPersona(binding: DiscordThreadBindingLookupRecord | undefined): {
+function resolveBindingPersona(binding: ThreadBindingRecord | undefined): {
   username?: string;
   avatarUrl?: string;
 } {
@@ -79,14 +67,14 @@ async function sendDiscordChunkWithFallback(params: {
   accountId?: string;
   rest?: RequestClient;
   replyTo?: string;
-  binding?: DiscordThreadBindingLookupRecord;
+  binding?: ThreadBindingRecord;
   username?: string;
   avatarUrl?: string;
 }) {
-  if (!params.text.trim()) {
+  const text = params.text.trim();
+  if (!text) {
     return;
   }
-  const text = params.text;
   const binding = params.binding;
   if (binding?.webhookId && binding?.webhookToken) {
     try {
@@ -146,7 +134,7 @@ export async function deliverDiscordReply(params: {
   tableMode?: MarkdownTableMode;
   chunkMode?: ChunkMode;
   sessionKey?: string;
-  threadBindings?: DiscordThreadBindingLookup;
+  threadBindings?: ThreadBindingManager;
 }) {
   const chunkLimit = Math.min(params.textLimit, 2000);
   const replyTo = params.replyToId?.trim() || undefined;

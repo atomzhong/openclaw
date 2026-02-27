@@ -46,6 +46,7 @@ const PREFERRED_PROVIDER_BY_AUTH_CHOICE: Partial<Record<AuthChoice, string>> = {
   "byteplus-api-key": "byteplus",
   "minimax-portal": "minimax-portal",
   "qianfan-api-key": "qianfan",
+  "hunyuan-api-key": "hunyuan",
   "custom-api-key": "custom",
 };
 

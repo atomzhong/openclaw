@@ -16,7 +16,6 @@ import {
   resolveStorePath,
 } from "../config/sessions.js";
 import { resolveRequiredHomeDir } from "../infra/home-dir.js";
-import { parseAgentSessionKey } from "../sessions/session-key-utils.js";
 import { note } from "../terminal/note.js";
 import { shortenHomePath } from "../utils.js";
 
@@ -164,15 +163,6 @@ function hasPairingPolicy(value: unknown): boolean {
     }
   }
   return false;
-}
-
-function isSlashRoutingSessionKey(sessionKey: string): boolean {
-  const raw = sessionKey.trim().toLowerCase();
-  if (!raw) {
-    return false;
-  }
-  const scoped = parseAgentSessionKey(raw)?.rest ?? raw;
-  return /^[^:]+:slash:[^:]+(?:$|:)/.test(scoped);
 }
 
 function shouldRequireOAuthDir(cfg: OpenClawConfig, env: NodeJS.ProcessEnv): boolean {
@@ -423,8 +413,7 @@ export async function noteStateIntegrity(
         return bUpdated - aUpdated;
       })
       .slice(0, 5);
-    const recentTranscriptCandidates = recent.filter(([key]) => !isSlashRoutingSessionKey(key));
-    const missing = recentTranscriptCandidates.filter(([, entry]) => {
+    const missing = recent.filter(([, entry]) => {
       const sessionId = entry.sessionId;
       if (!sessionId) {
         return false;
@@ -435,10 +424,9 @@ export async function noteStateIntegrity(
     if (missing.length > 0) {
       warnings.push(
         [
-          `- ${missing.length}/${recentTranscriptCandidates.length} recent sessions are missing transcripts.`,
+          `- ${missing.length}/${recent.length} recent sessions are missing transcripts.`,
           `  Verify sessions in store: ${formatCliCommand(`openclaw sessions --store "${absoluteStorePath}"`)}`,
           `  Preview cleanup impact: ${formatCliCommand(`openclaw sessions cleanup --store "${absoluteStorePath}" --dry-run`)}`,
-          `  Prune missing entries: ${formatCliCommand(`openclaw sessions cleanup --store "${absoluteStorePath}" --enforce --fix-missing`)}`,
         ].join("\n"),
       );
     }

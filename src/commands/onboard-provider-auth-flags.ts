@@ -185,6 +185,13 @@ export const ONBOARD_PROVIDER_AUTH_FLAGS: ReadonlyArray<OnboardProviderAuthFlag>
     description: "QIANFAN API key",
   },
   {
+    optionKey: "hunyuanApiKey",
+    authChoice: "hunyuan-api-key",
+    cliFlag: "--hunyuan-api-key",
+    cliOption: "--hunyuan-api-key <key>",
+    description: "Hunyuan API key",
+  },
+  {
     optionKey: "volcengineApiKey",
     authChoice: "volcengine-api-key",
     cliFlag: "--volcengine-api-key",

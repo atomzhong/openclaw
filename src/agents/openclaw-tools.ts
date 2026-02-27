@@ -116,10 +116,6 @@ export function createOpenClawTools(options?: {
     createCanvasTool({ config: options?.config }),
     createNodesTool({
       agentSessionKey: options?.agentSessionKey,
-      agentChannel: options?.agentChannel,
-      agentAccountId: options?.agentAccountId,
-      currentChannelId: options?.currentChannelId,
-      currentThreadTs: options?.currentThreadTs,
       config: options?.config,
     }),
     createCronTool({

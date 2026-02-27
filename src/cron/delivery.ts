@@ -4,7 +4,6 @@ export type CronDeliveryPlan = {
   mode: CronDeliveryMode;
   channel?: CronMessageChannel;
   to?: string;
-  accountId?: string;
   source: "delivery" | "payload";
   requested: boolean;
 };
@@ -21,14 +20,6 @@ function normalizeChannel(value: unknown): CronMessageChannel | undefined {
 }
 
 function normalizeTo(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-}
-
-function normalizeAccountId(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
   }
@@ -59,9 +50,6 @@ export function resolveCronDeliveryPlan(job: CronJob): CronDeliveryPlan {
     (delivery as { channel?: unknown } | undefined)?.channel,
   );
   const deliveryTo = normalizeTo((delivery as { to?: unknown } | undefined)?.to);
-  const deliveryAccountId = normalizeAccountId(
-    (delivery as { accountId?: unknown } | undefined)?.accountId,
-  );
 
   const channel = deliveryChannel ?? payloadChannel ?? "last";
   const to = deliveryTo ?? payloadTo;
@@ -71,7 +59,6 @@ export function resolveCronDeliveryPlan(job: CronJob): CronDeliveryPlan {
       mode: resolvedMode,
       channel: resolvedMode === "announce" ? channel : undefined,
       to,
-      accountId: deliveryAccountId,
       source: "delivery",
       requested: resolvedMode === "announce",
     };

@@ -1,0 +1,28 @@
+{
+  "name": "@openclaw/wxwork-bot",
+  "version": "2026.2.25",
+  "description": "OpenClaw WxWork Bot (企业微信机器人) channel plugin",
+  "type": "module",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "wxwork-bot",
+      "label": "WxWork Bot",
+      "selectionLabel": "WxWork Bot (企业微信机器人)",
+      "docsPath": "/channels/wxwork-bot",
+      "docsLabel": "wxwork-bot",
+      "blurb": "企业微信群机器人 Webhook 消息推送，支持文本、Markdown、图片回复。",
+      "order": 95
+    },
+    "install": {
+      "npmSpec": "@openclaw/wxwork-bot",
+      "localPath": "extensions/wxwork-bot",
+      "defaultChoice": "npm"
+    }
+  }
+}

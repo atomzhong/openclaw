@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { hasSupervisorHint } from "./supervisor-markers.js";
 
 type RespawnMode = "spawned" | "supervised" | "disabled" | "failed";
 
@@ -8,6 +7,14 @@ export type GatewayRespawnResult = {
   pid?: number;
   detail?: string;
 };
+
+const SUPERVISOR_HINT_ENV_VARS = [
+  "LAUNCH_JOB_LABEL",
+  "LAUNCH_JOB_NAME",
+  "INVOCATION_ID",
+  "SYSTEMD_EXEC_PID",
+  "JOURNAL_STREAM",
+];
 
 function isTruthy(value: string | undefined): boolean {
   if (!value) {
@@ -18,7 +25,10 @@ function isTruthy(value: string | undefined): boolean {
 }
 
 function isLikelySupervisedProcess(env: NodeJS.ProcessEnv = process.env): boolean {
-  return hasSupervisorHint(env);
+  return SUPERVISOR_HINT_ENV_VARS.some((key) => {
+    const value = env[key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
 }
 
 /**

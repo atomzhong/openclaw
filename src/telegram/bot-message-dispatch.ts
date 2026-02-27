@@ -567,10 +567,7 @@ export const dispatchTelegramMessage = async ({
               reasoningStepState.resetForNextStep();
               if (answerLane.hasStreamedMessage) {
                 const previewMessageId = answerLane.stream?.messageId();
-                // Only archive previews that still need a matching final text update.
-                // Once a preview has already been finalized, archiving it here causes
-                // cleanup to delete a user-visible final message on later media-only turns.
-                if (typeof previewMessageId === "number" && !finalizedPreviewByLane.answer) {
+                if (typeof previewMessageId === "number") {
                   archivedAnswerPreviews.push({
                     messageId: previewMessageId,
                     textSnapshot: answerLane.lastPartialText,
@@ -579,8 +576,6 @@ export const dispatchTelegramMessage = async ({
                 answerLane.stream?.forceNewMessage();
               }
               resetDraftLaneState(answerLane);
-              // New assistant message boundary: this lane now tracks a fresh preview lifecycle.
-              finalizedPreviewByLane.answer = false;
             }
           : undefined,
         onReasoningEnd: reasoningLane.stream

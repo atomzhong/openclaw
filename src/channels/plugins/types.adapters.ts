@@ -21,16 +21,7 @@ import type {
 } from "./types.core.js";
 
 export type ChannelSetupAdapter = {
-  resolveAccountId?: (params: {
-    cfg: OpenClawConfig;
-    accountId?: string;
-    input?: ChannelSetupInput;
-  }) => string;
-  resolveBindingAccountId?: (params: {
-    cfg: OpenClawConfig;
-    agentId: string;
-    accountId?: string;
-  }) => string | undefined;
+  resolveAccountId?: (params: { cfg: OpenClawConfig; accountId?: string }) => string;
   applyAccountName?: (params: {
     cfg: OpenClawConfig;
     accountId: string;

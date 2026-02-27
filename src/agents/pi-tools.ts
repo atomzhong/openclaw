@@ -1,4 +1,10 @@
-import { codingTools, createReadTool, readTool } from "@mariozechner/pi-coding-agent";
+import {
+  codingTools,
+  createEditTool,
+  createReadTool,
+  createWriteTool,
+  readTool,
+} from "@mariozechner/pi-coding-agent";
 import type { OpenClawConfig } from "../config/config.js";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
 import { resolveMergedSafeBinProfileFixtures } from "../infra/exec-safe-bin-runtime-policy.js";
@@ -28,8 +34,7 @@ import {
 } from "./pi-tools.policy.js";
 import {
   assertRequiredParams,
-  createHostWorkspaceEditTool,
-  createHostWorkspaceWriteTool,
+  CLAUDE_PARAM_GROUPS,
   createOpenClawReadTool,
   createSandboxedEditTool,
   createSandboxedReadTool,
@@ -60,31 +65,6 @@ import { resolveWorkspaceRoot } from "./workspace-dir.js";
 function isOpenAIProvider(provider?: string) {
   const normalized = provider?.trim().toLowerCase();
   return normalized === "openai" || normalized === "openai-codex";
-}
-
-const TOOL_DENY_BY_MESSAGE_PROVIDER: Readonly<Record<string, readonly string[]>> = {
-  voice: ["tts"],
-};
-
-function normalizeMessageProvider(messageProvider?: string): string | undefined {
-  const normalized = messageProvider?.trim().toLowerCase();
-  return normalized && normalized.length > 0 ? normalized : undefined;
-}
-
-function applyMessageProviderToolPolicy(
-  tools: AnyAgentTool[],
-  messageProvider?: string,
-): AnyAgentTool[] {
-  const normalizedProvider = normalizeMessageProvider(messageProvider);
-  if (!normalizedProvider) {
-    return tools;
-  }
-  const deniedTools = TOOL_DENY_BY_MESSAGE_PROVIDER[normalizedProvider];
-  if (!deniedTools || deniedTools.length === 0) {
-    return tools;
-  }
-  const deniedSet = new Set(deniedTools);
-  return tools.filter((tool) => !deniedSet.has(tool.name));
 }
 
 function isApplyPatchAllowedForModel(params: {
@@ -359,14 +339,22 @@ export function createOpenClawCodingTools(options?: {
       if (sandboxRoot) {
         return [];
       }
-      const wrapped = createHostWorkspaceWriteTool(workspaceRoot);
+      // Wrap with param normalization for Claude Code compatibility
+      const wrapped = wrapToolParamNormalization(
+        createWriteTool(workspaceRoot),
+        CLAUDE_PARAM_GROUPS.write,
+      );
       return [workspaceOnly ? wrapToolWorkspaceRootGuard(wrapped, workspaceRoot) : wrapped];
     }
     if (tool.name === "edit") {
       if (sandboxRoot) {
         return [];
       }
-      const wrapped = createHostWorkspaceEditTool(workspaceRoot);
+      // Wrap with param normalization for Claude Code compatibility
+      const wrapped = wrapToolParamNormalization(
+        createEditTool(workspaceRoot),
+        CLAUDE_PARAM_GROUPS.edit,
+      );
       return [workspaceOnly ? wrapToolWorkspaceRootGuard(wrapped, workspaceRoot) : wrapped];
     }
     return [tool];
@@ -388,9 +376,6 @@ export function createOpenClawCodingTools(options?: {
     scopeKey,
     sessionKey: options?.sessionKey,
     messageProvider: options?.messageProvider,
-    currentChannelId: options?.currentChannelId,
-    currentThreadTs: options?.currentThreadTs,
-    accountId: options?.agentAccountId,
     backgroundMs: options?.exec?.backgroundMs ?? execConfig.backgroundMs,
     timeoutSec: options?.exec?.timeoutSec ?? execConfig.timeoutSec,
     approvalRunningNoticeMs:
@@ -495,10 +480,9 @@ export function createOpenClawCodingTools(options?: {
       senderIsOwner: options?.senderIsOwner,
     }),
   ];
-  const toolsForMessageProvider = applyMessageProviderToolPolicy(tools, options?.messageProvider);
   // Security: treat unknown/undefined as unauthorized (opt-in, not opt-out)
   const senderIsOwner = options?.senderIsOwner === true;
-  const toolsByAuthorization = applyOwnerOnlyToolPolicy(toolsForMessageProvider, senderIsOwner);
+  const toolsByAuthorization = applyOwnerOnlyToolPolicy(tools, senderIsOwner);
   const subagentFiltered = applyToolPolicyPipeline({
     tools: toolsByAuthorization,
     toolMeta: (tool) => getPluginToolMeta(tool),

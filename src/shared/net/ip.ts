@@ -22,12 +22,11 @@ const PRIVATE_OR_LOOPBACK_IPV4_RANGES = new Set<Ipv4Range>([
   "carrierGradeNat",
 ]);
 
-const BLOCKED_IPV6_SPECIAL_USE_RANGES = new Set<Ipv6Range>([
+const PRIVATE_OR_LOOPBACK_IPV6_RANGES = new Set<Ipv6Range>([
   "unspecified",
   "loopback",
   "linkLocal",
   "uniqueLocal",
-  "multicast",
 ]);
 const RFC2544_BENCHMARK_PREFIX: [ipaddr.IPv4, number] = [ipaddr.IPv4.parse("198.18.0.0"), 15];
 export type Ipv4SpecialUseBlockOptions = {
@@ -228,15 +227,11 @@ export function isPrivateOrLoopbackIpAddress(raw: string | undefined): boolean {
   if (isIpv4Address(normalized)) {
     return PRIVATE_OR_LOOPBACK_IPV4_RANGES.has(normalized.range());
   }
-  return isBlockedSpecialUseIpv6Address(normalized);
-}
-
-export function isBlockedSpecialUseIpv6Address(address: ipaddr.IPv6): boolean {
-  if (BLOCKED_IPV6_SPECIAL_USE_RANGES.has(address.range())) {
+  if (PRIVATE_OR_LOOPBACK_IPV6_RANGES.has(normalized.range())) {
     return true;
   }
   // ipaddr.js does not classify deprecated site-local fec0::/10 as private.
-  return (address.parts[0] & 0xffc0) === 0xfec0;
+  return (normalized.parts[0] & 0xffc0) === 0xfec0;
 }
 
 export function isRfc1918Ipv4Address(raw: string | undefined): boolean {

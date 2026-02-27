@@ -1,6 +1,5 @@
 import type { OpenClawConfig } from "../config/config.js";
 import type { SessionEntry } from "../config/sessions.js";
-import { maskApiKey } from "../utils/mask-api-key.js";
 import {
   ensureAuthProfileStore,
   resolveAuthProfileDisplayLabel,
@@ -14,21 +13,10 @@ function formatApiKeySnippet(apiKey: string): string {
   if (!compact) {
     return "unknown";
   }
-  return maskApiKey(compact);
-}
-
-function formatCredentialSnippet(params: {
-  value: string | undefined;
-  ref: { source: string; id: string } | undefined;
-}): string {
-  const value = typeof params.value === "string" ? params.value.trim() : "";
-  if (value) {
-    return formatApiKeySnippet(value);
-  }
-  if (params.ref) {
-    return `ref(${params.ref.source}:${params.ref.id})`;
-  }
-  return "unknown";
+  const edge = compact.length >= 12 ? 6 : 4;
+  const head = compact.slice(0, edge);
+  const tail = compact.slice(-edge);
+  return `${head}…${tail}`;
 }
 
 export function resolveModelAuthLabel(params: {
@@ -69,13 +57,9 @@ export function resolveModelAuthLabel(params: {
       return `oauth${label ? ` (${label})` : ""}`;
     }
     if (profile.type === "token") {
-      return `token ${formatCredentialSnippet({ value: profile.token, ref: profile.tokenRef })}${
-        label ? ` (${label})` : ""
-      }`;
+      return `token ${formatApiKeySnippet(profile.token)}${label ? ` (${label})` : ""}`;
     }
-    return `api-key ${formatCredentialSnippet({ value: profile.key, ref: profile.keyRef })}${
-      label ? ` (${label})` : ""
-    }`;
+    return `api-key ${formatApiKeySnippet(profile.key ?? "")}${label ? ` (${label})` : ""}`;
   }
 
   const envKey = resolveEnvApiKey(providerKey);

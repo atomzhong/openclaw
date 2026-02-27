@@ -1,0 +1,9 @@
+{
+  "id": "wxwork-bot",
+  "channels": ["wxwork-bot"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

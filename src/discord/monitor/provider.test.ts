@@ -1,15 +1,11 @@
-import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 
 const {
-  clientFetchUserMock,
-  clientGetPluginMock,
   createDiscordNativeCommandMock,
   createNoopThreadBindingManagerMock,
   createThreadBindingManagerMock,
-  reconcileAcpThreadBindingsOnStartupMock,
   createdBindingManagers,
   listNativeCommandSpecsForConfigMock,
   listSkillCommandsForAgentsMock,
@@ -18,13 +14,9 @@ const {
   resolveDiscordAllowlistConfigMock,
   resolveNativeCommandsEnabledMock,
   resolveNativeSkillsEnabledMock,
-  resolveThreadBindingSessionTtlMsMock,
-  resolveThreadBindingsEnabledMock,
 } = vi.hoisted(() => {
   const createdBindingManagers: Array<{ stop: ReturnType<typeof vi.fn> }> = [];
   return {
-    clientFetchUserMock: vi.fn(async (_target: string) => ({ id: "bot-1" })),
-    clientGetPluginMock: vi.fn<(_name: string) => unknown>(() => undefined),
     createDiscordNativeCommandMock: vi.fn(() => ({ name: "mock-command" })),
     createNoopThreadBindingManagerMock: vi.fn(() => {
       const manager = { stop: vi.fn() };
@@ -36,11 +28,6 @@ const {
       createdBindingManagers.push(manager);
       return manager;
     }),
-    reconcileAcpThreadBindingsOnStartupMock: vi.fn(() => ({
-      checked: 0,
-      removed: 0,
-      staleSessionKeys: [],
-    })),
     createdBindingManagers,
     listNativeCommandSpecsForConfigMock: vi.fn(() => [{ name: "cmd" }]),
     listSkillCommandsForAgentsMock: vi.fn(() => []),
@@ -63,8 +50,6 @@ const {
     })),
     resolveNativeCommandsEnabledMock: vi.fn(() => true),
     resolveNativeSkillsEnabledMock: vi.fn(() => false),
-    resolveThreadBindingSessionTtlMsMock: vi.fn(() => undefined),
-    resolveThreadBindingsEnabledMock: vi.fn(() => true),
   };
 });
 
@@ -80,11 +65,11 @@ vi.mock("@buape/carbon", () => {
     async handleDeployRequest() {
       return undefined;
     }
-    async fetchUser(target: string) {
-      return await clientFetchUserMock(target);
+    async fetchUser(_target: string) {
+      return { id: "bot-1" };
     }
-    getPlugin(name: string) {
-      return clientGetPluginMock(name);
+    getPlugin(_name: string) {
+      return undefined;
     }
   }
   return { Client, ReadyListener };
@@ -234,9 +219,6 @@ vi.mock("./rest-fetch.js", () => ({
 vi.mock("./thread-bindings.js", () => ({
   createNoopThreadBindingManager: createNoopThreadBindingManagerMock,
   createThreadBindingManager: createThreadBindingManagerMock,
-  reconcileAcpThreadBindingsOnStartup: reconcileAcpThreadBindingsOnStartupMock,
-  resolveThreadBindingSessionTtlMs: resolveThreadBindingSessionTtlMsMock,
-  resolveThreadBindingsEnabled: resolveThreadBindingsEnabledMock,
 }));
 
 describe("monitorDiscordProvider", () => {
@@ -260,16 +242,9 @@ describe("monitorDiscordProvider", () => {
     }) as OpenClawConfig;
 
   beforeEach(() => {
-    clientFetchUserMock.mockClear().mockResolvedValue({ id: "bot-1" });
-    clientGetPluginMock.mockClear().mockReturnValue(undefined);
     createDiscordNativeCommandMock.mockClear().mockReturnValue({ name: "mock-command" });
     createNoopThreadBindingManagerMock.mockClear();
     createThreadBindingManagerMock.mockClear();
-    reconcileAcpThreadBindingsOnStartupMock.mockClear().mockReturnValue({
-      checked: 0,
-      removed: 0,
-      staleSessionKeys: [],
-    });
     createdBindingManagers.length = 0;
     listNativeCommandSpecsForConfigMock.mockClear().mockReturnValue([{ name: "cmd" }]);
     listSkillCommandsForAgentsMock.mockClear().mockReturnValue([]);
@@ -283,8 +258,6 @@ describe("monitorDiscordProvider", () => {
     });
     resolveNativeCommandsEnabledMock.mockClear().mockReturnValue(true);
     resolveNativeSkillsEnabledMock.mockClear().mockReturnValue(false);
-    resolveThreadBindingSessionTtlMsMock.mockClear().mockReturnValue(undefined);
-    resolveThreadBindingsEnabledMock.mockClear().mockReturnValue(true);
   });
 
   it("stops thread bindings when startup fails before lifecycle begins", async () => {
@@ -316,30 +289,5 @@ describe("monitorDiscordProvider", () => {
     expect(monitorLifecycleMock).toHaveBeenCalledTimes(1);
     expect(createdBindingManagers).toHaveLength(1);
     expect(createdBindingManagers[0]?.stop).toHaveBeenCalledTimes(1);
-    expect(reconcileAcpThreadBindingsOnStartupMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("captures gateway errors emitted before lifecycle wait starts", async () => {
-    const { monitorDiscordProvider } = await import("./provider.js");
-    const emitter = new EventEmitter();
-    clientGetPluginMock.mockImplementation((name: string) =>
-      name === "gateway" ? { emitter, disconnect: vi.fn() } : undefined,
-    );
-    clientFetchUserMock.mockImplementationOnce(async () => {
-      emitter.emit("error", new Error("Fatal Gateway error: 4014"));
-      return { id: "bot-1" };
-    });
-
-    await monitorDiscordProvider({
-      config: baseConfig(),
-      runtime: baseRuntime(),
-    });
-
-    expect(monitorLifecycleMock).toHaveBeenCalledTimes(1);
-    const lifecycleArgs = monitorLifecycleMock.mock.calls[0]?.[0] as {
-      pendingGatewayErrors?: unknown[];
-    };
-    expect(lifecycleArgs.pendingGatewayErrors).toHaveLength(1);
-    expect(String(lifecycleArgs.pendingGatewayErrors?.[0])).toContain("4014");
   });
 });

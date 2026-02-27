@@ -1,7 +1,7 @@
 import type { AuthProfileStore } from "../agents/auth-profiles.js";
+import type { AuthChoice, AuthChoiceGroupId } from "./onboard-types.js";
 import { AUTH_CHOICE_LEGACY_ALIASES_FOR_CLI } from "./auth-choice-legacy.js";
 import { ONBOARD_PROVIDER_AUTH_FLAGS } from "./onboard-provider-auth-flags.js";
-import type { AuthChoice, AuthChoiceGroupId } from "./onboard-types.js";
 
 export type { AuthChoiceGroupId };
 
@@ -118,6 +118,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Qianfan",
     hint: "API key",
     choices: ["qianfan-api-key"],
+  },
+  {
+    value: "hunyuan",
+    label: "Hunyuan",
+    hint: "API key",
+    choices: ["hunyuan-api-key"],
   },
   {
     value: "copilot",
@@ -242,7 +248,7 @@ const BASE_AUTH_CHOICE_OPTIONS: ReadonlyArray<AuthChoiceOption> = [
   {
     value: "google-gemini-cli",
     label: "Google Gemini CLI OAuth",
-    hint: "Unofficial flow; review account-risk warning before use",
+    hint: "Uses the bundled Gemini CLI auth plugin",
   },
   { value: "zai-api-key", label: "Z.AI API key" },
   {

@@ -4,7 +4,6 @@ import { promptAccountId as promptAccountIdSdk } from "../../../plugin-sdk/onboa
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../../../routing/session-key.js";
 import type { WizardPrompter } from "../../../wizard/prompts.js";
 import type { PromptAccountId, PromptAccountIdParams } from "../onboarding-types.js";
-import { moveSingleAccountChannelSectionToDefaultAccount } from "../setup-helpers.js";
 
 export const promptAccountId: PromptAccountId = async (params: PromptAccountIdParams) => {
   return await promptAccountIdSdk(params);
@@ -283,21 +282,13 @@ function patchConfigForScopedAccount(params: {
   ensureEnabled: boolean;
 }): OpenClawConfig {
   const { cfg, channel, accountId, patch, ensureEnabled } = params;
-  const seededCfg =
-    accountId === DEFAULT_ACCOUNT_ID
-      ? cfg
-      : moveSingleAccountChannelSectionToDefaultAccount({
-          cfg,
-          channelKey: channel,
-        });
-  const channelConfig =
-    (seededCfg.channels?.[channel] as Record<string, unknown> | undefined) ?? {};
+  const channelConfig = (cfg.channels?.[channel] as Record<string, unknown> | undefined) ?? {};
 
   if (accountId === DEFAULT_ACCOUNT_ID) {
     return {
-      ...seededCfg,
+      ...cfg,
       channels: {
-        ...seededCfg.channels,
+        ...cfg.channels,
         [channel]: {
           ...channelConfig,
           ...(ensureEnabled ? { enabled: true } : {}),
@@ -312,9 +303,9 @@ function patchConfigForScopedAccount(params: {
   const existingAccount = accounts[accountId] ?? {};
 
   return {
-    ...seededCfg,
+    ...cfg,
     channels: {
-      ...seededCfg.channels,
+      ...cfg.channels,
       [channel]: {
         ...channelConfig,
         ...(ensureEnabled ? { enabled: true } : {}),

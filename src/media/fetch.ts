@@ -27,7 +27,6 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 type FetchMediaOptions = {
   url: string;
   fetchImpl?: FetchLike;
-  requestInit?: RequestInit;
   filePathHint?: string;
   maxBytes?: number;
   maxRedirects?: number;
@@ -80,16 +79,7 @@ async function readErrorBodySnippet(res: Response, maxChars = 200): Promise<stri
 }
 
 export async function fetchRemoteMedia(options: FetchMediaOptions): Promise<FetchMediaResult> {
-  const {
-    url,
-    fetchImpl,
-    requestInit,
-    filePathHint,
-    maxBytes,
-    maxRedirects,
-    ssrfPolicy,
-    lookupFn,
-  } = options;
+  const { url, fetchImpl, filePathHint, maxBytes, maxRedirects, ssrfPolicy, lookupFn } = options;
 
   let res: Response;
   let finalUrl = url;
@@ -98,7 +88,6 @@ export async function fetchRemoteMedia(options: FetchMediaOptions): Promise<Fetc
     const result = await fetchWithSsrFGuard({
       url,
       fetchImpl,
-      init: requestInit,
       maxRedirects,
       policy: ssrfPolicy,
       lookupFn,

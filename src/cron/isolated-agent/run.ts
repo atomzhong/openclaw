@@ -40,7 +40,7 @@ import {
 import type { AgentDefaultsConfig } from "../../config/types.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
 import { logWarn } from "../../logger.js";
-import { normalizeAgentId } from "../../routing/session-key.js";
+import { buildAgentMainSessionKey, normalizeAgentId } from "../../routing/session-key.js";
 import {
   buildSafeExternalPrompt,
   detectSuspiciousPatterns,
@@ -63,7 +63,6 @@ import {
   pickSummaryFromPayloads,
   resolveHeartbeatAckMaxChars,
 } from "./helpers.js";
-import { resolveCronAgentSessionKey } from "./session-key.js";
 import { resolveCronSession } from "./session.js";
 import { resolveCronSkillsSnapshot } from "./skills-snapshot.js";
 
@@ -78,12 +77,6 @@ export type RunCronAgentTurnResult = {
    * messages.  See: https://github.com/openclaw/openclaw/issues/15692
    */
   delivered?: boolean;
-  /**
-   * `true` when cron attempted announce/direct delivery for this run.
-   * This is tracked separately from `delivered` because some announce paths
-   * cannot guarantee a final delivery ack synchronously.
-   */
-  deliveryAttempted?: boolean;
 } & CronRunOutcome &
   CronRunTelemetry;
 
@@ -143,7 +136,10 @@ export async function runCronIsolatedAgentTurn(params: {
   };
 
   const baseSessionKey = (params.sessionKey?.trim() || `cron:${params.job.id}`).trim();
-  const agentSessionKey = resolveCronAgentSessionKey({ sessionKey: baseSessionKey, agentId });
+  const agentSessionKey = buildAgentMainSessionKey({
+    agentId,
+    mainKey: baseSessionKey,
+  });
 
   const workspaceDirRaw = resolveAgentWorkspaceDir(params.cfg, agentId);
   const agentDir = resolveAgentDir(params.cfg, agentId);
@@ -202,17 +198,10 @@ export async function runCronIsolatedAgentTurn(params: {
       defaultModel: resolvedDefault.model,
     });
     if ("error" in resolvedOverride) {
-      if (resolvedOverride.error.startsWith("model not allowed:")) {
-        logWarn(
-          `cron: payload.model '${modelOverride}' not allowed, falling back to agent defaults`,
-        );
-      } else {
-        return { status: "error", error: resolvedOverride.error };
-      }
-    } else {
-      provider = resolvedOverride.ref.provider;
-      model = resolvedOverride.ref.model;
+      return { status: "error", error: resolvedOverride.error };
     }
+    provider = resolvedOverride.ref.provider;
+    model = resolvedOverride.ref.model;
   }
   const now = Date.now();
   const cronSession = resolveCronSession({
@@ -318,7 +307,6 @@ export async function runCronIsolatedAgentTurn(params: {
     channel: deliveryPlan.channel ?? "last",
     to: deliveryPlan.to,
     sessionKey: params.job.sessionKey,
-    accountId: deliveryPlan.accountId,
   });
 
   const { formattedTime, timeLine } = resolveCronStyleNow(params.cfg, now);
@@ -569,7 +557,7 @@ export async function runCronIsolatedAgentTurn(params: {
   const embeddedRunError = hasErrorPayload
     ? (lastErrorPayloadText ?? "cron isolated run returned an error payload")
     : undefined;
-  const resolveRunOutcome = (params?: { delivered?: boolean; deliveryAttempted?: boolean }) =>
+  const resolveRunOutcome = (params?: { delivered?: boolean }) =>
     withRunSession({
       status: hasErrorPayload ? "error" : "ok",
       ...(hasErrorPayload
@@ -578,7 +566,6 @@ export async function runCronIsolatedAgentTurn(params: {
       summary,
       outputText,
       delivered: params?.delivered,
-      deliveryAttempted: params?.deliveryAttempted,
       ...telemetry,
     });
 
@@ -624,23 +611,14 @@ export async function runCronIsolatedAgentTurn(params: {
     withRunSession,
   });
   if (deliveryResult.result) {
-    const resultWithDeliveryMeta: RunCronAgentTurnResult = {
-      ...deliveryResult.result,
-      deliveryAttempted:
-        deliveryResult.result.deliveryAttempted ?? deliveryResult.deliveryAttempted,
-    };
     if (!hasErrorPayload || deliveryResult.result.status !== "ok") {
-      return resultWithDeliveryMeta;
+      return deliveryResult.result;
     }
-    return resolveRunOutcome({
-      delivered: deliveryResult.result.delivered,
-      deliveryAttempted: resultWithDeliveryMeta.deliveryAttempted,
-    });
+    return resolveRunOutcome({ delivered: deliveryResult.result.delivered });
   }
   const delivered = deliveryResult.delivered;
-  const deliveryAttempted = deliveryResult.deliveryAttempted;
   summary = deliveryResult.summary;
   outputText = deliveryResult.outputText;
 
-  return resolveRunOutcome({ delivered, deliveryAttempted });
+  return resolveRunOutcome({ delivered });
 }

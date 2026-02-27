@@ -1,3 +1,5 @@
+import type { OpenClawConfig } from "../config/config.js";
+import type { ModelApi } from "../config/types.models.js";
 import {
   buildHuggingfaceModelDefinition,
   HUGGINGFACE_BASE_URL,
@@ -7,8 +9,10 @@ import {
   buildKilocodeProvider,
   buildKimiCodingProvider,
   buildQianfanProvider,
+  buildHunyuanProvider,
   buildXiaomiProvider,
   QIANFAN_DEFAULT_MODEL_ID,
+  HUNYUAN_DEFAULT_MODEL_ID,
   XIAOMI_DEFAULT_MODEL_ID,
 } from "../agents/models-config.providers.js";
 import {
@@ -28,8 +32,6 @@ import {
   VENICE_DEFAULT_MODEL_REF,
   VENICE_MODEL_CATALOG,
 } from "../agents/venice-models.js";
-import type { OpenClawConfig } from "../config/config.js";
-import type { ModelApi } from "../config/types.models.js";
 import { KILOCODE_BASE_URL } from "../providers/kilocode-shared.js";
 import {
   HUGGINGFACE_DEFAULT_MODEL_REF,
@@ -69,6 +71,8 @@ import {
   MISTRAL_DEFAULT_MODEL_ID,
   QIANFAN_BASE_URL,
   QIANFAN_DEFAULT_MODEL_REF,
+  HUNYUAN_BASE_URL,
+  HUNYUAN_DEFAULT_MODEL_REF,
   KIMI_CODING_MODEL_ID,
   KIMI_CODING_MODEL_REF,
   MOONSHOT_BASE_URL,
@@ -572,4 +576,40 @@ export function applyQianfanProviderConfig(cfg: OpenClawConfig): OpenClawConfig 
 export function applyQianfanConfig(cfg: OpenClawConfig): OpenClawConfig {
   const next = applyQianfanProviderConfig(cfg);
   return applyAgentDefaultModelPrimary(next, QIANFAN_DEFAULT_MODEL_REF);
+}
+
+export function applyHunyuanProviderConfig(cfg: OpenClawConfig): OpenClawConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[HUNYUAN_DEFAULT_MODEL_REF] = {
+    ...models[HUNYUAN_DEFAULT_MODEL_REF],
+    alias: models[HUNYUAN_DEFAULT_MODEL_REF]?.alias ?? "Hunyuan",
+  };
+  const defaultProvider = buildHunyuanProvider();
+  const existingProvider = cfg.models?.providers?.hunyuan as
+    | {
+        baseUrl?: unknown;
+        api?: unknown;
+      }
+    | undefined;
+  const existingBaseUrl =
+    typeof existingProvider?.baseUrl === "string" ? existingProvider.baseUrl.trim() : "";
+  const resolvedBaseUrl = existingBaseUrl || HUNYUAN_BASE_URL;
+  const resolvedApi =
+    typeof existingProvider?.api === "string"
+      ? (existingProvider.api as ModelApi)
+      : "openai-completions";
+
+  return applyProviderConfigWithDefaultModels(cfg, {
+    agentModels: models,
+    providerId: "hunyuan",
+    api: resolvedApi,
+    baseUrl: resolvedBaseUrl,
+    defaultModels: defaultProvider.models ?? [],
+    defaultModelId: HUNYUAN_DEFAULT_MODEL_ID,
+  });
+}
+
+export function applyHunyuanConfig(cfg: OpenClawConfig): OpenClawConfig {
+  const next = applyHunyuanProviderConfig(cfg);
+  return applyAgentDefaultModelPrimary(next, HUNYUAN_DEFAULT_MODEL_REF);
 }

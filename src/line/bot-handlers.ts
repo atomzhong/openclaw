@@ -21,12 +21,7 @@ import {
   upsertChannelPairingRequest,
 } from "../pairing/pairing-store.js";
 import type { RuntimeEnv } from "../runtime.js";
-import {
-  firstDefined,
-  isSenderAllowed,
-  normalizeAllowFrom,
-  normalizeDmAllowFromWithStore,
-} from "./bot-access.js";
+import { firstDefined, isSenderAllowed, normalizeAllowFromWithStore } from "./bot-access.js";
 import {
   getLineSourceInfo,
   buildLineMessageContext,
@@ -74,7 +69,6 @@ async function sendLinePairingReply(params: {
   const { code, created } = await upsertChannelPairingRequest({
     channel: "line",
     id: senderId,
-    accountId: context.account.accountId,
   });
   if (!created) {
     return;
@@ -122,12 +116,8 @@ async function shouldProcessLineEvent(
   const senderId = userId ?? "";
   const dmPolicy = account.config.dmPolicy ?? "pairing";
 
-  const storeAllowFrom = await readChannelAllowFromStore(
-    "line",
-    process.env,
-    account.accountId,
-  ).catch(() => []);
-  const effectiveDmAllow = normalizeDmAllowFromWithStore({
+  const storeAllowFrom = await readChannelAllowFromStore("line").catch(() => []);
+  const effectiveDmAllow = normalizeAllowFromWithStore({
     allowFrom: account.config.allowFrom,
     storeAllowFrom,
     dmPolicy,
@@ -142,9 +132,11 @@ async function shouldProcessLineEvent(
     account.config.groupAllowFrom,
     fallbackGroupAllowFrom,
   );
-  // Group authorization stays explicit to group allowlists and must not
-  // inherit DM pairing-store identities.
-  const effectiveGroupAllow = normalizeAllowFrom(groupAllowFrom);
+  const effectiveGroupAllow = normalizeAllowFromWithStore({
+    allowFrom: groupAllowFrom,
+    storeAllowFrom,
+    dmPolicy,
+  });
   const defaultGroupPolicy = resolveDefaultGroupPolicy(cfg);
   const { groupPolicy, providerMissingFallbackApplied } =
     resolveAllowlistProviderRuntimeGroupPolicy({

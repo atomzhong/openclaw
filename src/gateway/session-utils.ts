@@ -22,7 +22,7 @@ import {
   type SessionEntry,
   type SessionScope,
 } from "../config/sessions.js";
-import { openBoundaryFileSync } from "../infra/boundary-file-read.js";
+import { openVerifiedFileSync } from "../infra/safe-open-sync.js";
 import {
   normalizeAgentId,
   normalizeMainKey,
@@ -102,13 +102,14 @@ function resolveIdentityAvatarUrl(
     return undefined;
   }
   try {
-    const opened = openBoundaryFileSync({
-      absolutePath: resolvedCandidate,
-      rootPath: workspaceRoot,
-      rootRealPath: workspaceRoot,
-      boundaryLabel: "workspace root",
+    const resolvedReal = fs.realpathSync(resolvedCandidate);
+    if (!isPathWithinRoot(workspaceRoot, resolvedReal)) {
+      return undefined;
+    }
+    const opened = openVerifiedFileSync({
+      filePath: resolvedReal,
+      resolvedPath: resolvedReal,
       maxBytes: AVATAR_MAX_BYTES,
-      skipLexicalRootCheck: true,
     });
     if (!opened.ok) {
       return undefined;

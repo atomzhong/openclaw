@@ -19,6 +19,7 @@ import {
   shouldAckReaction as shouldAckReactionGate,
   type AckReactionScope,
 } from "../../../channels/ack-reactions.js";
+import { formatAllowlistMatchMeta } from "../../../channels/allowlist-match.js";
 import { resolveControlCommandGate } from "../../../channels/command-gating.js";
 import { resolveConversationLabel } from "../../../channels/conversation-label.js";
 import { logInboundDrop } from "../../../channels/logging.js";
@@ -27,6 +28,8 @@ import { recordInboundSession } from "../../../channels/session.js";
 import { readSessionUpdatedAt, resolveStorePath } from "../../../config/sessions.js";
 import { logVerbose, shouldLogVerbose } from "../../../globals.js";
 import { enqueueSystemEvent } from "../../../infra/system-events.js";
+import { buildPairingReply } from "../../../pairing/pairing-messages.js";
+import { upsertChannelPairingRequest } from "../../../pairing/pairing-store.js";
 import { resolveAgentRoute } from "../../../routing/resolve-route.js";
 import { resolveThreadSessionKeys } from "../../../routing/session-key.js";
 import type { ResolvedSlackAccount } from "../../accounts.js";
@@ -39,7 +42,6 @@ import { resolveSlackEffectiveAllowFrom } from "../auth.js";
 import { resolveSlackChannelConfig } from "../channel-config.js";
 import { stripSlackMentionsForCommandDetection } from "../commands.js";
 import { normalizeSlackChannelType, type SlackMonitorContext } from "../context.js";
-import { authorizeSlackDirectMessage } from "../dm-auth.js";
 import {
   resolveSlackAttachmentContent,
   MAX_SLACK_MEDIA_FILES,
@@ -125,9 +127,7 @@ export async function prepareSlackMessage(params: {
     return null;
   }
 
-  const { allowFromLower } = await resolveSlackEffectiveAllowFrom(ctx, {
-    includePairingStore: isDirectMessage,
-  });
+  const { allowFromLower } = await resolveSlackEffectiveAllowFrom(ctx);
 
   if (isDirectMessage) {
     const directUserId = message.user;
@@ -135,31 +135,57 @@ export async function prepareSlackMessage(params: {
       logVerbose("slack: drop dm message (missing user id)");
       return null;
     }
-    const allowed = await authorizeSlackDirectMessage({
-      ctx,
-      accountId: account.accountId,
-      senderId: directUserId,
-      allowFromLower,
-      resolveSenderName: ctx.resolveUserName,
-      sendPairingReply: async (text) => {
-        await sendMessageSlack(message.channel, text, {
-          token: ctx.botToken,
-          client: ctx.app.client,
-          accountId: account.accountId,
-        });
-      },
-      onDisabled: () => {
-        logVerbose("slack: drop dm (dms disabled)");
-      },
-      onUnauthorized: ({ allowMatchMeta }) => {
-        logVerbose(
-          `Blocked unauthorized slack sender ${message.user} (dmPolicy=${ctx.dmPolicy}, ${allowMatchMeta})`,
-        );
-      },
-      log: logVerbose,
-    });
-    if (!allowed) {
+    if (!ctx.dmEnabled || ctx.dmPolicy === "disabled") {
+      logVerbose("slack: drop dm (dms disabled)");
       return null;
+    }
+    if (ctx.dmPolicy !== "open") {
+      const allowMatch = resolveSlackAllowListMatch({
+        allowList: allowFromLower,
+        id: directUserId,
+        allowNameMatching: ctx.allowNameMatching,
+      });
+      const allowMatchMeta = formatAllowlistMatchMeta(allowMatch);
+      if (!allowMatch.allowed) {
+        if (ctx.dmPolicy === "pairing") {
+          const sender = await ctx.resolveUserName(directUserId);
+          const senderName = sender?.name ?? undefined;
+          const { code, created } = await upsertChannelPairingRequest({
+            channel: "slack",
+            id: directUserId,
+            meta: { name: senderName },
+          });
+          if (created) {
+            logVerbose(
+              `slack pairing request sender=${directUserId} name=${
+                senderName ?? "unknown"
+              } (${allowMatchMeta})`,
+            );
+            try {
+              await sendMessageSlack(
+                message.channel,
+                buildPairingReply({
+                  channel: "slack",
+                  idLine: `Your Slack user id: ${directUserId}`,
+                  code,
+                }),
+                {
+                  token: ctx.botToken,
+                  client: ctx.app.client,
+                  accountId: account.accountId,
+                },
+              );
+            } catch (err) {
+              logVerbose(`slack pairing reply failed for ${message.user}: ${String(err)}`);
+            }
+          }
+        } else {
+          logVerbose(
+            `Blocked unauthorized slack sender ${message.user} (dmPolicy=${ctx.dmPolicy}, ${allowMatchMeta})`,
+          );
+        }
+        return null;
+      }
     }
   }
 
